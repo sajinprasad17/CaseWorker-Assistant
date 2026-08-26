@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import requests
 import json
 import os
+from dotenv import load_dotenv
 from datetime import date
 from policy.policy_engine import evaluate_case
 from ai.triage_service import generate_triage_note
 
+load_dotenv()
 
 app = FastAPI(title="CaseGuard AI")
 
@@ -18,7 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HISTORY_API = "http://127.0.0.1:8083"
+HISTORY_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "history_data.json"
+)
+
+with open(HISTORY_FILE, "r", encoding="utf-8") as file:
+    HISTORY_DATA = json.load(file)
 
 # Find the data folder relative to this file
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,47 +84,50 @@ def get_referral(referral_id: str):
 
 @app.get("/residents/{resident_id}")
 def get_resident(resident_id: str):
-    response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}"
-    )
 
-    if response.status_code == 404:
+    resident = HISTORY_DATA.get(resident_id)
+
+    if resident is None:
         raise HTTPException(
             status_code=404,
             detail="Resident not found"
         )
 
-    return response.json()
+    return resident
 
 
 @app.get("/residents/{resident_id}/household")
 def get_household(resident_id: str):
-    response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}/household"
-    )
 
-    if response.status_code == 404:
+    resident = HISTORY_DATA.get(resident_id)
+
+    if resident is None:
         raise HTTPException(
             status_code=404,
             detail="Resident not found"
         )
 
-    return response.json()
+    return {
+        "resident_ref": resident["resident_ref"],
+        "household": resident["household"]
+    }
 
 
 @app.get("/residents/{resident_id}/events")
 def get_events(resident_id: str):
-    response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}/events"
-    )
 
-    if response.status_code == 404:
+    resident = HISTORY_DATA.get(resident_id)
+
+    if resident is None:
         raise HTTPException(
             status_code=404,
             detail="Resident not found"
         )
 
-    return response.json()
+    return {
+        "resident_ref": resident["resident_ref"],
+        "events": resident["events"]
+    }
 
 
 @app.get("/cases/{referral_id}/decision")
@@ -137,11 +147,15 @@ def get_case_decision(referral_id: str):
 
 @app.get("/cases/{referral_id}")
 def get_case(referral_id: str):
-    # Find the referral
+
+    # Find referral
     referrals = load_referrals()
 
     referral = next(
-        (r for r in referrals if r["referral_id"] == referral_id),
+        (
+            r for r in referrals
+            if r["referral_id"] == referral_id
+        ),
         None
     )
 
@@ -151,37 +165,25 @@ def get_case(referral_id: str):
             detail="Referral not found"
         )
 
-    # Get the resident ID from the referral
     resident_id = referral["resident_ref"]
 
-    # Get resident information
-    resident_response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}"
-    )
+    # Get resident directly from local history data
+    resident = HISTORY_DATA.get(resident_id)
 
-    if resident_response.status_code != 200:
+    if resident is None:
         raise HTTPException(
             status_code=404,
             detail="Resident not found"
         )
 
-    resident = resident_response.json()
+    # Remove duplicated household/events from resident object
+    resident = resident.copy()
     resident.pop("household", None)
     resident.pop("events", None)
 
-    # Get household information
-    household_response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}/household"
-    )
+    # Get household
+    household = HISTORY_DATA[resident_id]["household"]
 
-    if household_response.status_code != 200:
-        raise HTTPException(
-            status_code=500,
-            detail="Could not retrieve household information"
-        )
-
-    household = household_response.json()["household"]
-    # Calculate age for every household member
     household_with_age = []
 
     for member in household:
@@ -191,27 +193,16 @@ def get_case(referral_id: str):
             **member,
             "age": age
         })
-    # Check whether household contains anyone under 18
+
+    # Get events
+    events = HISTORY_DATA[resident_id]["events"]
+
+    # Detect under-18 household member
     has_under_18 = any(
-    member["age"] < 18
-    for member in household_with_age
-    )
-    
-
-    # Get previous case events
-    events_response = requests.get(
-        f"{HISTORY_API}/residents/{resident_id}/events"
+        member["age"] < 18
+        for member in household_with_age
     )
 
-    if events_response.status_code != 200:
-        raise HTTPException(
-            status_code=500,
-            detail="Could not retrieve case events"
-        )
-
-    events = events_response.json()["events"]
-
-    # Return the complete digital case
     return {
         "referral": referral,
         "resident": resident,
@@ -219,6 +210,7 @@ def get_case(referral_id: str):
         "events": events,
         "has_under_18": has_under_18
     }
+
 
 @app.get("/process-queue")
 def process_queue():
