@@ -4,8 +4,8 @@ import json
 import os
 from dotenv import load_dotenv
 from datetime import date
-from policy.policy_engine import evaluate_case
-from ai.triage_service import generate_triage_note
+from backend.policy.policy_engine import evaluate_case
+from backend.ai.triage_service import generate_triage_note
 
 load_dotenv()
 
