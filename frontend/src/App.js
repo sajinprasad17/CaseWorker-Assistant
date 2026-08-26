@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE =process.env.REACT_APP_API_URL || "";
 
 function App() {
   const [queue, setQueue] = useState(null);
@@ -24,7 +24,7 @@ function App() {
       setLoadingQueue(true);
       setError("");
 
-      const response = await fetch(`${API_BASE}/process-queue`);
+      const response = await fetch(`${API_BASE}/api/process-queue`);
 
       if (!response.ok) {
         throw new Error("Failed to load referral queue");
@@ -49,7 +49,7 @@ function App() {
       setError("");
 
       const response = await fetch(
-        `${API_BASE}/cases/${referralId}`
+        `${API_BASE}/api/cases/${referralId}`
       );
 
       if (!response.ok) {
@@ -75,7 +75,7 @@ function App() {
       setError("");
 
       const response = await fetch(
-        `${API_BASE}/cases/${selectedId}/triage`,
+        `${API_BASE}/api/cases/${selectedId}/triage`,
         {
           method: "POST",
         }

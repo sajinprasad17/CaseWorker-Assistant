@@ -53,12 +53,12 @@ def root():
     return {"message": "CaseGuard AI backend is running"}
 
 
-@app.get("/health")
+@app.get("/api/health")
 def health():
     return {"status": "healthy"}
 
 
-@app.get("/referrals")
+@app.get("/api/referrals")
 def get_referrals():
     referrals = load_referrals()
 
@@ -68,7 +68,7 @@ def get_referrals():
     }
 
 
-@app.get("/referrals/{referral_id}")
+@app.get("/api/referrals/{referral_id}")
 def get_referral(referral_id: str):
     referrals = load_referrals()
 
@@ -82,7 +82,7 @@ def get_referral(referral_id: str):
     )
 
 
-@app.get("/residents/{resident_id}")
+@app.get("/api/residents/{resident_id}")
 def get_resident(resident_id: str):
 
     resident = HISTORY_DATA.get(resident_id)
@@ -96,7 +96,7 @@ def get_resident(resident_id: str):
     return resident
 
 
-@app.get("/residents/{resident_id}/household")
+@app.get("/api/residents/{resident_id}/household")
 def get_household(resident_id: str):
 
     resident = HISTORY_DATA.get(resident_id)
@@ -113,7 +113,7 @@ def get_household(resident_id: str):
     }
 
 
-@app.get("/residents/{resident_id}/events")
+@app.get("/api/residents/{resident_id}/events")
 def get_events(resident_id: str):
 
     resident = HISTORY_DATA.get(resident_id)
@@ -145,7 +145,7 @@ def get_case_decision(referral_id: str):
     }
 
 
-@app.get("/cases/{referral_id}")
+@app.get("/api/cases/{referral_id}")
 def get_case(referral_id: str):
 
     # Find referral
@@ -212,7 +212,7 @@ def get_case(referral_id: str):
     }
 
 
-@app.get("/process-queue")
+@app.get("/api/process-queue")
 def process_queue():
     referrals = load_referrals()
 
