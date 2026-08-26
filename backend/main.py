@@ -130,7 +130,7 @@ def get_events(resident_id: str):
     }
 
 
-@app.get("/cases/{referral_id}/decision")
+@app.get("/api/cases/{referral_id}/decision")
 def get_case_decision(referral_id: str):
 
     # Get the complete case
@@ -279,7 +279,7 @@ def process_queue():
         "cases": results
     }
 
-@app.post("/cases/{referral_id}/triage")
+@app.post("/api/cases/{referral_id}/triage")
 def generate_case_triage(referral_id: str):
 
     # 1. Build the complete case
